@@ -1,11 +1,13 @@
 """
-Movie Review AI Engine v3.2 (Hybrid Core v3.0 + TTS Fix)
-========================================================
-- Giữ nguyên thuật toán khớp cảnh CLIP + Viterbi DP của v3.0 (độ chính xác thực tế cao nhất).
-- Nâng cấp Viterbi chống lặp cảnh xen kẽ (A -> B -> A).
-- Sửa triệt để lỗi đổi giọng lồng tiếng (/tts): tự động map tên giọng từ Java UI,
-  tự chuẩn hóa rate/pitch không gây lỗi 400, làm sạch ký tự lỗi và chống cache âm thanh cũ.
-- Tương thích 100% cấu trúc dữ liệu JSON với Main.java (v3.0 -> v3.2).
+Movie Review AI Engine v3.2 (Full Upgraded Edition)
+===================================================
+Tích hợp đầy đủ:
+1. Lõi chọn cảnh CLIP + Viterbi DP từ v3.0 (chính xác nhất thực tế).
+2. Chống lặp cảnh toàn cục (kể cả lặp cách quãng A -> B -> A).
+3. Chống đứng hình (Frozen Frame): tăng MIN_SCENE_SEC = 3.8s + phạt cảnh tĩnh/đen.
+4. Chống bẫy chữ Intro/Title Card: giảm điểm cảnh tĩnh hiện chữ giới thiệu đầu/cuối phim.
+5. Nhận diện vùng Highlight hành động để khớp ưu tiên với các câu kịch bản cao trào.
+6. Khóa giọng TTS cố định suốt clip + Tích hợp giọng "Cô gái hoạt ngôn" (Review nhanh).
 """
 from __future__ import annotations
 
@@ -31,39 +33,67 @@ from pydantic import BaseModel, ConfigDict, Field
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
 log = logging.getLogger("MovieReviewAI")
 
-ALGO_VERSION = "3.2_clip_dp_v3core"
+ALGO_VERSION = "3.2_clip_dp_full_upgrade"
 CLIP_IMG_MODEL = os.getenv("CLIP_IMG_MODEL", "clip-ViT-B-32")
 CLIP_TXT_MODEL = os.getenv("CLIP_TXT_MODEL", "sentence-transformers/clip-ViT-B-32-multilingual-v1")
 TEXT_MODEL = os.getenv("TEXT_MODEL", "paraphrase-multilingual-MiniLM-L12-v2")
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5vl:3b")
 
-# Thông số chuẩn từ v3.0 giúp chọn cảnh mượt nhất
+# Cấu hình cắt cảnh & Viterbi tối ưu chống đứng hình và lặp cảnh
 FRAME_FRACTIONS = (0.15, 0.38, 0.62, 0.85)
-MIN_SCENE_SEC = 1.5
+MIN_SCENE_SEC = 3.8           # Tăng lên 3.8s để cảnh luôn đủ dài cho câu đọc, chống đứng khung hình cuối câu
 MAX_SCENE_SEC = 14.0
-SPLIT_CHUNK_SEC = 7.0
-PRIOR_WEIGHT = 0.45
-REUSE_PENALTY = 3.0          # Phạt nặng khi 2 câu liên tiếp dùng cùng 1 cảnh
-GLOBAL_REUSE_PENALTY = 0.85  # Phạt bổ sung khi dùng lại cảnh đã xuất hiện ở các câu trước đó
-DEFAULT_BACK_PENALTY = 1.2   # Phạt khi nhảy lùi về cảnh trước đó trong phim
+SPLIT_CHUNK_SEC = 6.5
+PRIOR_WEIGHT = 0.45           # Độ ưu tiên vị trí tương đối theo mạch phim
+REUSE_PENALTY = 5.0           # Phạt cực nặng khi 2 câu liên tiếp dùng cùng 1 cảnh
+GLOBAL_REUSE_PENALTY = 2.2    # Phạt tích lũy khi dùng lại bất kỳ cảnh nào đã dùng trước đó
+DEFAULT_BACK_PENALTY = 1.35   # Phạt khi nhảy lùi về cảnh trước đó trong phim
+STATIC_FRAME_PENALTY = 0.65   # Phạt các cảnh đứng yên (tránh màn hình chữ giới thiệu / cảnh chết)
 
 DATA_DIR = Path("ai_cache")
 DATA_DIR.mkdir(exist_ok=True)
 
-# Danh sách giọng chuẩn hỗ trợ đổi giọng từ Java UI
-SUPPORTED_VOICES = {
-    "hoaimy": "vi-VN-HoaiMyNeural",
-    "namminh": "vi-VN-NamMinhNeural",
-    "female": "vi-VN-HoaiMyNeural",
-    "male": "vi-VN-NamMinhNeural",
-    "nu": "vi-VN-HoaiMyNeural",
-    "nữ": "vi-VN-HoaiMyNeural",
-    "nam": "vi-VN-NamMinhNeural",
-    "jenny": "en-US-JennyNeural",
-    "guy": "en-US-GuyNeural",
-    "xiaoxiao": "zh-CN-XiaoxiaoNeural",
-    "yunxi": "zh-CN-YunxiNeural",
+
+# ----------------------------------------------------------------------------
+# Cấu hình Giọng đọc (Bao gồm "Cô gái hoạt ngôn" & Khóa giọng xuyên suốt clip)
+# ----------------------------------------------------------------------------
+VOICE_PRESETS = {
+    "hoatngon": {
+        "key": "hoatngon",
+        "base_voice": "vi-VN-HoaiMyNeural",
+        "base_rate": 18,    # Đọc nhanh +18% chuẩn review phim cuốn hút
+        "base_pitch": 4,    # Tông giọng tươi sáng +4Hz
+        "label": "Cô gái hoạt ngôn (Review nhanh)",
+    },
+    "hoaimy": {
+        "key": "hoaimy",
+        "base_voice": "vi-VN-HoaiMyNeural",
+        "base_rate": 0,
+        "base_pitch": 0,
+        "label": "Hoài My (Nữ chuẩn)",
+    },
+    "namminh": {
+        "key": "namminh",
+        "base_voice": "vi-VN-NamMinhNeural",
+        "base_rate": 0,
+        "base_pitch": 0,
+        "label": "Nam Minh (Nam chuẩn)",
+    },
+    "namtram": {
+        "key": "namtram",
+        "base_voice": "vi-VN-NamMinhNeural",
+        "base_rate": 8,
+        "base_pitch": -4,
+        "label": "Nam trầm (Review hành động)",
+    },
+}
+
+TTS_THREAD_LOCK = threading.Lock()
+SESSION_VOICE_STATE = {
+    "active_preset": "hoatngon",  # Mặc định ưu tiên giọng Cô gái hoạt ngôn
+    "locked_rate": None,
+    "locked_pitch": None,
 }
 
 
@@ -171,7 +201,7 @@ except Exception as _ex:
 
 
 # ----------------------------------------------------------------------------
-# Schema Request (Cho phép trường mở rộng từ Main.java mà không báo lỗi 422)
+# Schema Request
 # ----------------------------------------------------------------------------
 class MatchRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -181,113 +211,105 @@ class MatchRequest(BaseModel):
     max_scenes: int = 240
     use_ollama: bool = False
     order_penalty: float = DEFAULT_BACK_PENALTY
+    voice: Optional[str] = None  # Nếu Java gửi kèm giọng ngay lúc match, khóa giọng ngay từ đầu
 
 
 class TTSRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     text: str = Field(..., min_length=1)
-    voice: Optional[str] = "vi-VN-HoaiMyNeural"
-    voice_id: Optional[str] = None      # Dự phòng nếu Java gửi key voice_id
-    voiceName: Optional[str] = None     # Dự phòng nếu Java gửi key voiceName
+    voice: Optional[str] = None
+    voice_id: Optional[str] = None
+    voiceName: Optional[str] = None
     rate: Any = "+0%"
-    speed: Any = None                   # Dự phòng nếu Java gửi key speed (vd: 1.1)
+    speed: Any = None
     pitch: Any = "+0Hz"
-    output_path: Optional[str] = None   # Dự phòng nếu Java truyền đường dẫn lưu file
+    output_path: Optional[str] = None
 
 
 # ----------------------------------------------------------------------------
-# Bộ chuẩn hóa tham số TTS (Chống lỗi đổi giọng từ Main.java)
+# Bộ xử lý Giọng đọc TTS (Khóa giọng cố định, không nhảy giọng giữa clip)
 # ----------------------------------------------------------------------------
-def resolve_voice(raw_voice: Optional[str]) -> str:
-    """Chuyển đổi mọi định dạng tên giọng từ Java ComboBox về chuẩn Microsoft Edge TTS."""
+def strip_vietnamese_accents(s: str) -> str:
+    s = re.sub(r"[àáạảãâầấậẩẫăằắặẳẵ]", "a", s)
+    s = re.sub(r"[èéẹẻẽêềếệểễ]", "e", s)
+    s = re.sub(r"[ìíịỉĩ]", "i", s)
+    s = re.sub(r"[òóọỏõôồốộổỗơờớợởỡ]", "o", s)
+    s = re.sub(r"[ùúụủũưừứựửữ]", "u", s)
+    s = re.sub(r"[ỳýỵỷỹ]", "y", s)
+    s = re.sub(r"[đ]", "d", s)
+    return s
+
+
+def resolve_voice_preset(raw_voice: Optional[str]) -> dict:
+    """
+    Nhận diện chính xác giọng từ UI Java và lưu vào SESSION_VOICE_STATE.
+    Nếu một câu trong kịch bản gửi thiếu tham số voice, tự động lấy đúng giọng của câu trước đó.
+    """
     if not raw_voice or not str(raw_voice).strip():
-        return "vi-VN-HoaiMyNeural"
+        return VOICE_PRESETS[SESSION_VOICE_STATE["active_preset"]]
 
-    v = str(raw_voice).strip()
+    v_clean = strip_vietnamese_accents(str(raw_voice).strip().lower())
+    v_compact = re.sub(r"[^a-z0-9]", "", v_clean)
 
-    # 1. Nếu chuỗi đã chứa mã chuẩn kiểu xx-XX-NameNeural (kể cả có mô tả phía sau như "vi-VN-NamMinhNeural (Nam)")
-    m = re.search(r"([a-z]{2}-[A-Z]{2}-[A-Za-z0-9]+Neural)", v)
-    if m:
-        return m.group(1)
+    # 1. Nhận diện giọng "Cô gái hoạt ngôn"
+    if any(k in v_compact for k in ("hoatngon", "cogai", "tiktok", "reviewnhanh", "nhanh", "capcut", "stral", "viral")):
+        SESSION_VOICE_STATE["active_preset"] = "hoatngon"
+        return VOICE_PRESETS["hoatngon"]
 
-    # 2. Kiểm tra theo từ khóa tiếng Việt / tên rút gọn
-    low = v.lower().replace("_", "").replace("-", "").replace(" ", "")
-    if "namminh" in low or "giọngnam" in low or "giongnam" in low:
-        return "vi-VN-NamMinhNeural"
-    if "hoaimy" in low or "hoàimy" in low or "giọngnữ" in low or "giongnu" in low:
-        return "vi-VN-HoaiMyNeural"
+    # 2. Nhận diện giọng "Nam trầm"
+    if any(k in v_compact for k in ("namtram", "tramnam", "tram")):
+        SESSION_VOICE_STATE["active_preset"] = "namtram"
+        return VOICE_PRESETS["namtram"]
 
-    for key, target in SUPPORTED_VOICES.items():
-        if key in v.lower():
-            return target
+    # 3. Nhận diện giọng "Nam Minh"
+    if any(k in v_compact for k in ("namminh", "giongnam", "male", "nam")):
+        SESSION_VOICE_STATE["active_preset"] = "namminh"
+        return VOICE_PRESETS["namminh"]
 
-    return "vi-VN-HoaiMyNeural"
+    # 4. Nhận diện giọng "Hoài My"
+    if any(k in v_compact for k in ("hoaimy", "giongnu", "female", "nu")):
+        SESSION_VOICE_STATE["active_preset"] = "hoaimy"
+        return VOICE_PRESETS["hoaimy"]
+
+    return VOICE_PRESETS[SESSION_VOICE_STATE["active_preset"]]
 
 
-def normalize_rate(rate_val: Any, speed_val: Any = None) -> str:
-    """Chuyển đổi tốc độ đọc từ bất kỳ định dạng nào (1.2, '10%', '+10%', -5) sang '+10%'."""
-    val = speed_val if speed_val is not None else rate_val
+def parse_offset_int(val: Any, is_rate: bool = True) -> int:
     if val is None:
-        return "+0%"
-
+        return 0
     s = str(val).strip().replace(" ", "")
-    if not s or s in ("0", "0%", "+0%", "-0%", "1.0", "1"):
-        return "+0%"
-
-    # Nếu đã đúng chuẩn [+-]dd%
-    if re.fullmatch(r"[+-]\d{1,3}%", s):
-        return s
-
-    # Nếu thiếu dấu + ở đầu (vd: "15%")
-    if re.fullmatch(r"\d{1,3}%", s):
-        return f"+{s}"
-
-    # Nếu là số thực kiểu hệ số tốc độ (vd: 1.2 -> +20%, 0.85 -> -15%) hoặc phần trăm nguyên (vd: 15 -> +15%)
+    if not s or s in ("0", "0%", "+0%", "-0%", "0Hz", "+0Hz", "-0Hz", "1.0", "1"):
+        return 0
     try:
-        num = float(s.rstrip("%"))
-        if not s.endswith("%") and 0.25 <= num <= 3.0 and ("." in s or num <= 2.0):
-            pct = int(round((num - 1.0) * 100))
-        else:
-            pct = int(round(num))
-        pct = max(-80, min(150, pct))
-        return f"{pct:+d}%"
+        clean = re.sub(r"[^0-9.+-]", "", s)
+        num = float(clean)
+        if is_rate and ("." in s and not s.endswith("%") and 0.3 <= num <= 2.5):
+            return int(round((num - 1.0) * 100))
+        return int(round(num))
     except ValueError:
-        return "+0%"
+        return 0
 
 
-def normalize_pitch(pitch_val: Any) -> str:
-    """Chuyển đổi cao độ từ bất kỳ định dạng nào ('0Hz', 5, '-2Hz', '+0%') sang '+0Hz'."""
-    if pitch_val is None:
-        return "+0Hz"
+def build_prosody(preset: dict, user_rate: Any, user_speed: Any, user_pitch: Any) -> tuple[str, str]:
+    raw_r = user_speed if user_speed is not None else user_rate
+    r_offset = parse_offset_int(raw_r, is_rate=True)
+    p_offset = parse_offset_int(user_pitch, is_rate=False)
 
-    s = str(pitch_val).strip().replace(" ", "")
-    if not s or s in ("0", "0Hz", "+0Hz", "-0Hz", "0%", "+0%"):
-        return "+0Hz"
-
-    if re.fullmatch(r"[+-]\d{1,3}Hz", s, re.IGNORECASE):
-        return s[:-2] + "Hz"
-
-    if re.fullmatch(r"\d{1,3}Hz", s, re.IGNORECASE):
-        return f"+{s[:-2]}Hz"
-
-    try:
-        num = int(round(float(re.sub(r"[^0-9.+-]", "", s))))
-        num = max(-100, min(100, num))
-        return f"{num:+d}Hz"
-    except ValueError:
-        return "+0Hz"
+    final_rate = max(-50, min(100, preset["base_rate"] + r_offset))
+    final_pitch = max(-50, min(50, preset["base_pitch"] + p_offset))
+    return f"{final_rate:+d}%", f"{final_pitch:+d}Hz"
 
 
 def clean_tts_text(text: str) -> str:
-    """Làm sạch văn bản để tránh ngắt kết nối WebSocket của Edge-TTS."""
-    cleaned = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", text)
+    """Làm sạch văn bản để Edge-TTS đọc liền mạch, không bị ngắt hoặc nhảy tông giọng."""
+    cleaned = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f*#_~`<>|\"'“”‘’]", " ", text)
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned
 
 
 # ----------------------------------------------------------------------------
-# Tiện ích video
+# Tiện ích phân tích Video & Chống đứng hình / Bẫy chữ
 # ----------------------------------------------------------------------------
 def validate_video_file(video_path: str) -> dict:
     if not video_path or not os.path.isfile(video_path):
@@ -329,9 +351,12 @@ def check_ollama_available() -> bool:
 
 
 def build_intervals(raw_scenes: list[tuple[float, float]], total_dur: float, max_scenes: int) -> list[tuple[float, float]]:
-    """Gộp cảnh quá ngắn, chia cảnh quá dài, gộp bớt nếu vượt max_scenes (không bỏ rơi nội dung)."""
+    """
+    Gộp cảnh quá ngắn (< MIN_SCENE_SEC = 3.8s) để tránh lỗi khung hình đứng yên khi câu đọc dài,
+    và chia các cảnh quá dài thành các đoạn vừa phải.
+    """
     if not raw_scenes:
-        step = max(4.0, total_dur / max_scenes)
+        step = max(5.0, total_dur / max_scenes)
         raw_scenes = []
         t = 0.0
         while t < total_dur - 1.0:
@@ -383,7 +408,11 @@ def grab_frames(cap: cv2.VideoCapture, s: float, e: float, fps: float) -> tuple[
 def visual_features(frames: list[np.ndarray]) -> dict:
     grays = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in frames]
     diffs = [float(np.mean(cv2.absdiff(grays[i], grays[i + 1]))) for i in range(len(grays) - 1)]
+    min_diff = float(np.min(diffs)) if diffs else 0.0
+    mean_diff = float(np.mean(diffs)) if diffs else 0.0
     mid = grays[len(grays) // 2]
+    edges_val = float(np.mean(cv2.Canny(mid, 80, 160)))
+
     face_cnt = 0
     if face_cascade is not None:
         try:
@@ -391,11 +420,18 @@ def visual_features(frames: list[np.ndarray]) -> dict:
             face_cnt = len(faces)
         except Exception:
             face_cnt = 0
+
+    # Phát hiện cảnh bị đứng hình (frozen) hoặc màn hình hiện chữ tĩnh (title card)
+    is_static = bool(mean_diff < 1.1 or min_diff < 0.25)
+    is_title_like = bool(mean_diff < 2.2 and edges_val > 28.0 and face_cnt == 0)
+
     return {
-        "motion": round(float(np.mean(diffs)) if diffs else 0.0, 2),
+        "motion": round(mean_diff, 2),
         "brightness": round(float(np.mean(mid)), 1),
-        "edges": float(np.mean(cv2.Canny(mid, 80, 160))),
+        "edges": round(edges_val, 2),
         "faces": int(face_cnt),
+        "is_static": is_static,
+        "is_title_like": is_title_like,
     }
 
 
@@ -535,6 +571,8 @@ def analyze_video(video_path: str, meta: dict, max_scenes: int, use_clip: bool, 
             "frame_times": [round(t, 2) for t in times[:n_frames]],
             "motion_score": feat["motion"],
             "face_count": feat["faces"],
+            "is_static": feat["is_static"],
+            "is_title_like": feat["is_title_like"],
             "caption": caption,
             "vision_status": status,
         })
@@ -547,7 +585,7 @@ def analyze_video(video_path: str, meta: dict, max_scenes: int, use_clip: bool, 
 
 
 # ----------------------------------------------------------------------------
-# Khớp câu <-> cảnh (Lõi v3.0 + Nâng cấp chống lặp cảnh xa)
+# Khớp câu <-> cảnh (Chống bẫy chữ Intro, chống đứng hình & chống lặp cảnh)
 # ----------------------------------------------------------------------------
 def zscore_rows(m: np.ndarray) -> np.ndarray:
     return (m - m.mean(axis=1, keepdims=True)) / (m.std(axis=1, keepdims=True) + 1e-6)
@@ -556,7 +594,7 @@ def zscore_rows(m: np.ndarray) -> np.ndarray:
 ACTION_WORDS = (
     "chiến đấu", "tấn công", "phản công", "truy đuổi", "chạy", "đánh", "tốc độ", "đòn",
     "lao vào", "kích hoạt", "nổ", "va chạm", "đuổi theo", "chiến thắng", "bắn", "chém",
-    "né tránh", "giao tranh", "đối đầu", "tung chiêu", "hạ gục", "vũ khí", "cứu",
+    "né tránh", "giao tranh", "đối đầu", "tung chiêu", "hạ gục", "vũ khí", "cứu", "quyết định",
 )
 CALM_WORDS = (
     "nhớ lại", "suy nghĩ", "bí mật", "quá khứ", "cha", "mẹ", "ước mơ", "quan sát",
@@ -564,40 +602,77 @@ CALM_WORDS = (
 )
 
 
-def visual_bonus_matrix(sentences: list[str], scenes: list[dict]) -> np.ndarray:
+def enrich_sentences_for_clip(sentences: list[str]) -> list[str]:
+    """
+    Thêm ngữ cảnh thị giác vào câu ngắn chứa tên riêng để tránh CLIP bị 'bẫy chữ' (OCR)
+    chọn nhầm màn hình giới thiệu tên nhân vật ở phần mở đầu.
+    """
+    enriched = []
+    for s in sentences:
+        low = s.lower()
+        if any(w in low for w in ACTION_WORDS):
+            enriched.append(f"{s} (cảnh hành động, nhân vật đang chiến đấu chuyển động trong phim)")
+        elif len(s.split()) <= 10:
+            enriched.append(f"{s} (cảnh quay nhân vật và bối cảnh hoạt động trong phim)")
+        else:
+            enriched.append(s)
+    return enriched
+
+
+def visual_bonus_matrix(sentences: list[str], scenes: list[dict], total_dur: float) -> np.ndarray:
     motion = np.array([s["motion_score"] for s in scenes], dtype=np.float32)
     faces = np.array([s["face_count"] for s in scenes], dtype=np.float32)
+    is_static = np.array([bool(s.get("is_static", False)) for s in scenes], dtype=np.float32)
+    is_title = np.array([bool(s.get("is_title_like", False)) for s in scenes], dtype=np.float32)
+    mids = np.array([(s["start_time"] + s["end_time"]) / 2.0 for s in scenes], dtype=np.float32)
+    rel_pos = mids / max(total_dur, 1.0)
+
     out = np.zeros((len(sentences), len(scenes)), dtype=np.float32)
+
+    # 1. Phạt các cảnh bị đứng hình (tránh lỗi khung hình đứng yên trong video xuất ra)
+    scene_penalty = -STATIC_FRAME_PENALTY * is_static - 0.55 * is_title
+
+    # 2. Phạt cảnh Opening / Title Card (90s đầu nếu phim dài > 8 phút) và Ending Credits (cuối phim)
+    if total_dur > 480.0:
+        intro_zone = (mids < 85.0) & ((is_title > 0) | (motion < 4.0))
+        outro_zone = (rel_pos > 0.93) & ((is_title > 0) | (motion < 4.0))
+        scene_penalty -= 1.15 * intro_zone.astype(np.float32)
+        scene_penalty -= 1.15 * outro_zone.astype(np.float32)
+
+    out += scene_penalty[None, :]
+
+    # 3. Cộng điểm thưởng Highlight cho các câu hành động / tâm lý
     for i, sent in enumerate(sentences):
         low = sent.lower()
         if any(w in low for w in ACTION_WORDS):
-            out[i] += np.minimum(0.45, motion / 60.0)
-        if any(w in low for w in CALM_WORDS):
-            out[i] += 0.2 * (faces >= 1)
+            out[i] += np.minimum(0.60, motion / 48.0)
+            # Phạt thêm nếu câu hành động mà chọn trúng cảnh tĩnh
+            out[i] -= 0.5 * (motion < 3.0).astype(np.float32)
+        elif any(w in low for w in CALM_WORDS):
+            out[i] += 0.25 * (faces >= 1)
+
     return out
 
 
 def monotonic_viterbi(score: np.ndarray, back_penalty: float) -> list[int]:
     """
-    Quy hoạch động Viterbi của v3.0 kết hợp bộ nhớ lịch sử đường đi:
+    Quy hoạch động Viterbi có bộ nhớ toàn cục:
     - Giữ mạch thời gian tự nhiên của phim.
-    - Phạt nặng khi lặp cảnh sát nhau (REUSE_PENALTY) và phạt tích lũy nếu dùng lại cảnh cũ (GLOBAL_REUSE_PENALTY).
+    - Chặn đứng việc lặp lại cùng 1 cảnh (kể cả lặp liên tiếp lẫn lặp xen kẽ A -> B -> A).
     """
     n, m = score.shape
     idx = np.arange(m)
-    trans = np.zeros((m, m), dtype=np.float32)  # trans[k, j]: chi phí chuyển từ cảnh k sang cảnh j
+    trans = np.zeros((m, m), dtype=np.float32)
     back = idx[None, :] < idx[:, None]
-    trans[back] = back_penalty + 0.004 * (idx[:, None] - idx[None, :])[back]
+    trans[back] = back_penalty + 0.005 * (idx[:, None] - idx[None, :])[back]
     trans[idx, idx] = REUSE_PENALTY
 
     dp = score[0].copy()
     ptr = np.zeros((n, m), dtype=np.int32)
-    # Lưu lịch sử số lần mỗi cảnh đã xuất hiện trên nhánh tối ưu dẫn tới trạng thái k
     usage_hist = np.zeros((m, m), dtype=np.float32)
     usage_hist[idx, idx] = 1.0
 
     for i in range(1, n):
-        # Cộng thêm phạt nếu cảnh đích j đã từng xuất hiện trong lịch sử của nhánh k
         repeat_cost = GLOBAL_REUSE_PENALTY * usage_hist
         cand = dp[:, None] - trans - repeat_cost
         best_prev = np.argmax(cand, axis=0)
@@ -629,8 +704,9 @@ def match_sentences(
     parts = []
 
     if img_emb is not None and MODELS.clip_txt is not None:
+        clip_queries = enrich_sentences_for_clip(sentences)
         txt = MODELS.clip_txt.encode(
-            sentences,
+            clip_queries,
             batch_size=32,
             convert_to_numpy=True,
             normalize_embeddings=True,
@@ -661,7 +737,7 @@ def match_sentences(
     mids = np.array([(s["start_time"] + s["end_time"]) / 2.0 for s in scenes]) / max(total_dur, 1.0)
     expected = (np.arange(n) + 0.5) / n
     prior = PRIOR_WEIGHT * np.exp(-0.5 * ((mids[None, :] - expected[:, None]) / 0.30) ** 2)
-    adj = base + prior + visual_bonus_matrix(sentences, scenes)
+    adj = base + prior + visual_bonus_matrix(sentences, scenes, total_dur)
 
     order_pen = float(max(0.0, min(6.0, req.order_penalty)))
     path = monotonic_viterbi(adj.astype(np.float32), order_pen)
@@ -679,22 +755,30 @@ def match_sentences(
         else:
             conf = "Độ khớp thấp (Nên duyệt lại)"
 
-        focus = (
-            sc["frame_times"][int(focus_idx[i, j])]
+        s_start = float(sc["start_time"])
+        s_end = float(sc["end_time"])
+        raw_focus = (
+            float(sc["frame_times"][int(focus_idx[i, j])])
             if img_emb is not None
-            else round((sc["start_time"] + sc["end_time"]) / 2.0, 2)
+            else round((s_start + s_end) / 2.0, 2)
         )
+        # Giữ focus_sec cách rìa cảnh ít nhất 1.2s để khi Java cắt quanh focus_sec không bị hụt hình gây đứng frame
+        if (s_end - s_start) > 2.6:
+            focus = round(max(s_start + 1.2, min(s_end - 1.2, raw_focus)), 2)
+        else:
+            focus = round((s_start + s_end) / 2.0, 2)
+
         results.append({
             "index": i + 1,
             "scene_id": sc["scene_id"],
-            "start_sec": sc["start_time"],
-            "end_sec": sc["end_time"],
-            "start_time": sc["start_time"],
-            "end_time": sc["end_time"],
-            "boundary_start": sc["start_time"],
-            "boundary_end": sc["end_time"],
+            "start_sec": s_start,
+            "end_sec": s_end,
+            "start_time": s_start,
+            "end_time": s_end,
+            "boundary_start": s_start,
+            "boundary_end": s_end,
             "focus_sec": focus,
-            "duration": round(sc["end_time"] - sc["start_time"], 2),
+            "duration": round(s_end - s_start, 2),
             "text": sentences[i],
             "caption": sc["caption"],
             "score": round(z, 3),
@@ -702,6 +786,7 @@ def match_sentences(
             "vision_status": sc["vision_status"],
             "motion_score": sc["motion_score"],
             "face_count": sc["face_count"],
+            "is_highlight": bool(sc["motion_score"] >= 22.0),
         })
     return results
 
@@ -760,7 +845,13 @@ def health():
         "clip": MODELS.state,
         "edge_tts": edge,
         "busy": JOB_LOCK.locked(),
-        "voices": ["vi-VN-HoaiMyNeural", "vi-VN-NamMinhNeural"],
+        "active_voice": VOICE_PRESETS[SESSION_VOICE_STATE["active_preset"]]["label"],
+        "voices": [
+            "vi-VN-HoaiMy-HoatNgon",
+            "vi-VN-HoaiMyNeural",
+            "vi-VN-NamMinhNeural",
+            "vi-VN-NamMinh-Tram",
+        ],
     }
 
 
@@ -768,10 +859,19 @@ def health():
 def list_voices():
     return {
         "voices": [
-            {"id": "vi-VN-HoaiMyNeural", "name": "Hoài My (Nữ - Miền Nam)", "gender": "Female"},
-            {"id": "vi-VN-NamMinhNeural", "name": "Nam Minh (Nam - Miền Bắc)", "gender": "Male"},
+            {"id": "vi-VN-HoaiMy-HoatNgon", "name": "Cô gái hoạt ngôn (Review nhanh)", "gender": "Female"},
+            {"id": "vi-VN-HoaiMyNeural", "name": "Hoài My (Nữ chuẩn)", "gender": "Female"},
+            {"id": "vi-VN-NamMinhNeural", "name": "Nam Minh (Nam chuẩn)", "gender": "Male"},
+            {"id": "vi-VN-NamMinh-Tram", "name": "Nam trầm (Review hành động)", "gender": "Male"},
         ]
     }
+
+
+@app.post("/set_voice")
+def set_voice(voice: str):
+    """Endpoint tùy chọn để khóa cứng giọng đọc trước khi render."""
+    preset = resolve_voice_preset(voice)
+    return {"status": "ok", "locked_voice": preset["base_voice"], "label": preset["label"]}
 
 
 @app.get("/progress")
@@ -791,6 +891,9 @@ def auto_match_all(req: MatchRequest):
         raise HTTPException(status_code=409, detail="AI Server đang bận xử lý tác vụ khác, vui lòng đợi.")
     CANCEL.clear()
     try:
+        if req.voice:
+            resolve_voice_preset(req.voice)
+
         max_scenes = int(max(10, min(800, req.max_scenes or 240)))
         meta = validate_video_file(req.video_path)
         total_dur = meta["duration"]
@@ -840,18 +943,17 @@ def auto_match_all(req: MatchRequest):
         JOB_LOCK.release()
 
 
-async def _synthesize_edge_tts(text: str, voice: str, rate: str, pitch: str) -> bytes:
+async def _synthesize_edge_tts_strict(text: str, base_voice: str, rate: str, pitch: str) -> bytes:
+    """
+    Chỉ kết xuất đúng 1 giọng `base_voice` và giữ nguyên `rate`/`pitch` trong mọi lần thử lại.
+    Đảm bảo không bao giờ bị biến đổi giọng hay tốc độ giữa các câu trong cùng 1 clip.
+    """
     import edge_tts
 
     last_err: Optional[Exception] = None
-    for attempt in range(4):
+    for attempt in range(5):
         try:
-            # Ở lần thử cuối nếu lỗi do tham số rate/pitch, thử gọi mặc định không truyền rate/pitch
-            if attempt == 3:
-                comm = edge_tts.Communicate(text, voice)
-            else:
-                comm = edge_tts.Communicate(text, voice, rate=rate, pitch=pitch)
-
+            comm = edge_tts.Communicate(text, base_voice, rate=rate, pitch=pitch)
             buf = bytearray()
             async for ch in comm.stream():
                 if ch["type"] == "audio":
@@ -860,10 +962,10 @@ async def _synthesize_edge_tts(text: str, voice: str, rate: str, pitch: str) -> 
                 return bytes(buf)
         except Exception as ex:  # noqa: BLE001
             last_err = ex
-            log.warning("Thử lại TTS lần %d (voice=%s, rate=%s, pitch=%s): %s", attempt + 1, voice, rate, pitch, ex)
-        await asyncio.sleep(0.6 * (attempt + 1))
+            log.warning("Thử lại TTS lần %d (voice=%s, rate=%s, pitch=%s): %s", attempt + 1, base_voice, rate, pitch, ex)
+        await asyncio.sleep(0.5 * (attempt + 1))
 
-    raise HTTPException(status_code=502, detail=f"edge-tts thất bại (voice={voice}): {last_err}")
+    raise HTTPException(status_code=502, detail=f"edge-tts thất bại (voice={base_voice}): {last_err}")
 
 
 @app.post("/tts")
@@ -875,7 +977,6 @@ async def tts(
     rate: Optional[str] = None,
     pitch: Optional[str] = None,
 ):
-    """Hỗ trợ cả POST (JSON từ Main.java) và GET (query params) với bộ tự sửa lỗi tham số."""
     try:
         import edge_tts  # noqa: F401
     except ImportError:
@@ -886,17 +987,22 @@ async def tts(
     if not cleaned_text:
         raise HTTPException(status_code=400, detail="Nội dung văn bản lồng tiếng trống!")
 
-    raw_voice = (
-        (req.voice or req.voice_id or req.voiceName)
-        if req
-        else (voice or "vi-VN-HoaiMyNeural")
-    )
-    resolved_voice = resolve_voice(raw_voice)
-    resolved_rate = normalize_rate(req.rate if req else rate, req.speed if req else None)
-    resolved_pitch = normalize_pitch(req.pitch if req else pitch)
+    with TTS_THREAD_LOCK:
+        raw_voice = (req.voice or req.voice_id or req.voiceName) if req else voice
+        preset = resolve_voice_preset(raw_voice)
+        base_voice = preset["base_voice"]
+        final_rate, final_pitch = build_prosody(
+            preset,
+            req.rate if req else rate,
+            req.speed if req else None,
+            req.pitch if req else pitch,
+        )
 
-    log.info("TTS -> voice: %s (gốc: %s) | rate: %s | pitch: %s", resolved_voice, raw_voice, resolved_rate, resolved_pitch)
-    audio_bytes = await _synthesize_edge_tts(cleaned_text, resolved_voice, resolved_rate, resolved_pitch)
+    log.info(
+        "TTS [%s] -> model: %s | rate: %s | pitch: %s | text: %s...",
+        preset["label"], base_voice, final_rate, final_pitch, cleaned_text[:32],
+    )
+    audio_bytes = await _synthesize_edge_tts_strict(cleaned_text, base_voice, final_rate, final_pitch)
 
     if req and req.output_path:
         try:
@@ -911,7 +1017,8 @@ async def tts(
         media_type="audio/mpeg",
         headers={
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-            "X-Resolved-Voice": resolved_voice,
+            "X-Resolved-Voice": base_voice,
+            "X-Voice-Preset": preset["label"],
         },
     )
 
