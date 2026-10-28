@@ -1,0 +1,422 @@
+[
+  {
+    "scene_id": "scene_000",
+    "start_time": 0.0,
+    "end_time": 2.44,
+    "thumbnail": "ai_cache\\thumbnails\\scene_000.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_001",
+    "start_time": 47.48,
+    "end_time": 48.98,
+    "thumbnail": "ai_cache\\thumbnails\\scene_001.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_002",
+    "start_time": 57.96,
+    "end_time": 58.89,
+    "thumbnail": "ai_cache\\thumbnails\\scene_002.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_003",
+    "start_time": 68.8,
+    "end_time": 73.31,
+    "thumbnail": "ai_cache\\thumbnails\\scene_003.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_004",
+    "start_time": 84.95,
+    "end_time": 86.29,
+    "thumbnail": "ai_cache\\thumbnails\\scene_004.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_005",
+    "start_time": 95.36,
+    "end_time": 99.3,
+    "thumbnail": "ai_cache\\thumbnails\\scene_005.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_006",
+    "start_time": 112.71,
+    "end_time": 116.32,
+    "thumbnail": "ai_cache\\thumbnails\\scene_006.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_007",
+    "start_time": 125.73,
+    "end_time": 129.06,
+    "thumbnail": "ai_cache\\thumbnails\\scene_007.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_008",
+    "start_time": 140.17,
+    "end_time": 141.07,
+    "thumbnail": "ai_cache\\thumbnails\\scene_008.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_009",
+    "start_time": 158.22,
+    "end_time": 159.49,
+    "thumbnail": "ai_cache\\thumbnails\\scene_009.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_010",
+    "start_time": 177.91,
+    "end_time": 181.78,
+    "thumbnail": "ai_cache\\thumbnails\\scene_010.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_011",
+    "start_time": 195.3,
+    "end_time": 197.53,
+    "thumbnail": "ai_cache\\thumbnails\\scene_011.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_012",
+    "start_time": 246.11,
+    "end_time": 253.32,
+    "thumbnail": "ai_cache\\thumbnails\\scene_012.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_013",
+    "start_time": 268.37,
+    "end_time": 270.27,
+    "thumbnail": "ai_cache\\thumbnails\\scene_013.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_014",
+    "start_time": 278.28,
+    "end_time": 279.11,
+    "thumbnail": "ai_cache\\thumbnails\\scene_014.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_015",
+    "start_time": 282.82,
+    "end_time": 284.15,
+    "thumbnail": "ai_cache\\thumbnails\\scene_015.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_016",
+    "start_time": 290.06,
+    "end_time": 290.99,
+    "thumbnail": "ai_cache\\thumbnails\\scene_016.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_017",
+    "start_time": 301.57,
+    "end_time": 302.5,
+    "thumbnail": "ai_cache\\thumbnails\\scene_017.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_018",
+    "start_time": 317.15,
+    "end_time": 319.42,
+    "thumbnail": "ai_cache\\thumbnails\\scene_018.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_019",
+    "start_time": 335.94,
+    "end_time": 337.2,
+    "thumbnail": "ai_cache\\thumbnails\\scene_019.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_020",
+    "start_time": 347.21,
+    "end_time": 348.25,
+    "thumbnail": "ai_cache\\thumbnails\\scene_020.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_021",
+    "start_time": 371.44,
+    "end_time": 373.41,
+    "thumbnail": "ai_cache\\thumbnails\\scene_021.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_022",
+    "start_time": 394.29,
+    "end_time": 400.3,
+    "thumbnail": "ai_cache\\thumbnails\\scene_022.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_023",
+    "start_time": 414.98,
+    "end_time": 418.18,
+    "thumbnail": "ai_cache\\thumbnails\\scene_023.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_024",
+    "start_time": 425.63,
+    "end_time": 428.76,
+    "thumbnail": "ai_cache\\thumbnails\\scene_024.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_025",
+    "start_time": 443.71,
+    "end_time": 445.95,
+    "thumbnail": "ai_cache\\thumbnails\\scene_025.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_026",
+    "start_time": 463.03,
+    "end_time": 469.04,
+    "thumbnail": "ai_cache\\thumbnails\\scene_026.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_027",
+    "start_time": 487.85,
+    "end_time": 490.76,
+    "thumbnail": "ai_cache\\thumbnails\\scene_027.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_028",
+    "start_time": 507.37,
+    "end_time": 527.69,
+    "thumbnail": "ai_cache\\thumbnails\\scene_028.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_029",
+    "start_time": 546.41,
+    "end_time": 551.08,
+    "thumbnail": "ai_cache\\thumbnails\\scene_029.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_030",
+    "start_time": 566.1,
+    "end_time": 567.47,
+    "thumbnail": "ai_cache\\thumbnails\\scene_030.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_031",
+    "start_time": 579.98,
+    "end_time": 582.08,
+    "thumbnail": "ai_cache\\thumbnails\\scene_031.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_032",
+    "start_time": 612.01,
+    "end_time": 619.19,
+    "thumbnail": "ai_cache\\thumbnails\\scene_032.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_033",
+    "start_time": 642.38,
+    "end_time": 650.48,
+    "thumbnail": "ai_cache\\thumbnails\\scene_033.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_034",
+    "start_time": 671.17,
+    "end_time": 673.77,
+    "thumbnail": "ai_cache\\thumbnails\\scene_034.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_035",
+    "start_time": 689.22,
+    "end_time": 694.89,
+    "thumbnail": "ai_cache\\thumbnails\\scene_035.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_036",
+    "start_time": 721.89,
+    "end_time": 724.76,
+    "thumbnail": "ai_cache\\thumbnails\\scene_036.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_037",
+    "start_time": 748.35,
+    "end_time": 750.52,
+    "thumbnail": "ai_cache\\thumbnails\\scene_037.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_038",
+    "start_time": 779.45,
+    "end_time": 782.62,
+    "thumbnail": "ai_cache\\thumbnails\\scene_038.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_039",
+    "start_time": 806.37,
+    "end_time": 807.81,
+    "thumbnail": "ai_cache\\thumbnails\\scene_039.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_040",
+    "start_time": 834.9,
+    "end_time": 837.17,
+    "thumbnail": "ai_cache\\thumbnails\\scene_040.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_041",
+    "start_time": 847.55,
+    "end_time": 854.95,
+    "thumbnail": "ai_cache\\thumbnails\\scene_041.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_042",
+    "start_time": 874.04,
+    "end_time": 882.25,
+    "thumbnail": "ai_cache\\thumbnails\\scene_042.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_043",
+    "start_time": 901.83,
+    "end_time": 906.34,
+    "thumbnail": "ai_cache\\thumbnails\\scene_043.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_044",
+    "start_time": 918.92,
+    "end_time": 920.62,
+    "thumbnail": "ai_cache\\thumbnails\\scene_044.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_045",
+    "start_time": 933.3,
+    "end_time": 936.0,
+    "thumbnail": "ai_cache\\thumbnails\\scene_045.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_046",
+    "start_time": 971.54,
+    "end_time": 974.54,
+    "thumbnail": "ai_cache\\thumbnails\\scene_046.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_047",
+    "start_time": 984.58,
+    "end_time": 987.35,
+    "thumbnail": "ai_cache\\thumbnails\\scene_047.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_048",
+    "start_time": 998.06,
+    "end_time": 1001.77,
+    "thumbnail": "ai_cache\\thumbnails\\scene_048.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_049",
+    "start_time": 1014.78,
+    "end_time": 1024.66,
+    "thumbnail": "ai_cache\\thumbnails\\scene_049.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_050",
+    "start_time": 1033.2,
+    "end_time": 1035.97,
+    "thumbnail": "ai_cache\\thumbnails\\scene_050.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_051",
+    "start_time": 1054.45,
+    "end_time": 1057.76,
+    "thumbnail": "ai_cache\\thumbnails\\scene_051.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_052",
+    "start_time": 1069.33,
+    "end_time": 1070.17,
+    "thumbnail": "ai_cache\\thumbnails\\scene_052.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_053",
+    "start_time": 1088.62,
+    "end_time": 1092.26,
+    "thumbnail": "ai_cache\\thumbnails\\scene_053.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_054",
+    "start_time": 1100.33,
+    "end_time": 1102.03,
+    "thumbnail": "ai_cache\\thumbnails\\scene_054.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_055",
+    "start_time": 1110.68,
+    "end_time": 1112.71,
+    "thumbnail": "ai_cache\\thumbnails\\scene_055.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_056",
+    "start_time": 1123.36,
+    "end_time": 1125.89,
+    "thumbnail": "ai_cache\\thumbnails\\scene_056.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_057",
+    "start_time": 1133.63,
+    "end_time": 1135.63,
+    "thumbnail": "ai_cache\\thumbnails\\scene_057.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_058",
+    "start_time": 1143.34,
+    "end_time": 1146.75,
+    "thumbnail": "ai_cache\\thumbnails\\scene_058.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  },
+  {
+    "scene_id": "scene_059",
+    "start_time": 1161.43,
+    "end_time": 1162.49,
+    "thumbnail": "ai_cache\\thumbnails\\scene_059.jpg",
+    "caption": "Cảnh phim chi tiết với nhân vật và diễn biến câu chuyện"
+  }
+]

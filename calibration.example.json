@@ -1,0 +1,8 @@
+{
+  "calibrated": true,
+  "raw_low": 0.17,
+  "raw_high": 0.30,
+  "z_ok": 2.4,
+  "z_review": 1.5,
+  "null_score": 1.25
+}

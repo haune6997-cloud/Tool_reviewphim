@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic>=2
+numpy
+opencv-python
+requests
+scenedetect
+sentence-transformers
+pillow
+edge-tts
+# kiểm thử
+pytest
+httpx
