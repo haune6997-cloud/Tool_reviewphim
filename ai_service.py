@@ -1521,3 +1521,218 @@ async def tts(req: TTSRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host=os.getenv("AI_HOST", "127.0.0.1"), port=int(os.getenv("AI_PORT", "8000")), log_level="info")
+
+def match_sentences(job, req, an, meta):
+    sentences = req.sentences
+    n, m = len(sentences), len(an.scenes)
+
+    if n == 0 or m == 0:
+        return [], {"fallback": False, "ranking": "clip_chain_viterbi"}
+
+    S = score_matrix(
+        sentences,
+        an,
+        flag_abstract=True,
+        force_abstract=False,
+    )
+
+    base = S["base"].copy().astype(np.float32)
+    raw = S["raw"].copy().astype(np.float32)
+    evidence = S["e"].copy().astype(np.float32)
+    fidx = S["fidx"]
+    fallback = S["fallback"]
+    abstract = S["abstract"]
+    job.lap("score")
+
+    back, fwd, prior_w = ORDER_MODES.get(
+        req.order_mode, ORDER_MODES["free"]
+    )
+
+    if req.order_penalty is not None:
+        back = req.order_penalty
+
+    mids = np.array([
+        (s["start_time"] + s["end_time"]) / 2.0
+        for s in an.scenes
+    ], dtype=np.float32) / max(an.total_dur, 1.0)
+
+    prior = np.zeros((n, m), dtype=np.float32)
+
+    if prior_w > 0:
+        expected = (np.arange(n, dtype=np.float32) + 0.5) / n
+        mult = np.array([
+            0.2 if _FLASHBACK.search(s) else 1.0
+            for s in sentences
+        ], dtype=np.float32)
+
+        prior = (
+            prior_w
+            * mult[:, None]
+            * np.exp(
+                -0.5
+                * ((mids[None, :] - expected[:, None]) / 0.30) ** 2
+            )
+        ).astype(np.float32)
+
+    bonus = visual_bonus_matrix(sentences, an.scenes)
+    bonus[abstract] = 0.0
+
+    adj = base + prior + bonus
+
+    no_match = np.zeros(n, dtype=bool)
+
+    if req.allow_no_match and not fallback:
+        max_raw = raw.max(axis=1)
+        no_match = (~abstract) & (max_raw < CAL.raw_low)
+
+    trans = build_transitions(m, back, fwd, None)
+
+    if REUSE_WINDOW > 0:
+        path = optimize_with_diversity(
+            adj.copy(),
+            trans,
+            -0.25,
+            an.scene_sim,
+            window=REUSE_WINDOW,
+        )
+    else:
+        path = sequence_optimize(adj, trans, -0.25)
+
+    path = np.asarray(path, dtype=np.int32)
+
+    for i in range(n):
+        if no_match[i]:
+            path[i] = m
+
+    job.lap("sequence")
+
+    results = []
+
+    with VideoReader(meta["path"], an.fps, an.total_dur) as reader:
+        for i, j in enumerate(path):
+            job.check()
+
+            if j >= m:
+                results.append({
+                    "index": i + 1,
+                    "text": sentences[i],
+                    "scene_id": None,
+                    "start_sec": None,
+                    "end_sec": None,
+                    "boundary_start": None,
+                    "boundary_end": None,
+                    "focus_sec": None,
+                    "action_start_sec": None,
+                    "action_end_sec": None,
+                    "caption": "",
+                    "vision_status": an.vision_mode,
+                    "score": 0.0,
+                    "raw_sim": round(float(raw[i].max()), 4),
+                    "evidence": round(float(evidence[i].max()), 3),
+                    "margin": 0.0,
+                    "gap_to_best": 0.0,
+                    "confidence": "Không tìm thấy cảnh phù hợp",
+                    "status": "no_match",
+                    "candidates": [],
+                    "reason": "Độ tương đồng hình ảnh thấp; cần duyệt thủ công.",
+                })
+                continue
+
+            sc = an.scenes[j]
+            order = np.argsort(-adj[i])
+            best_score = float(adj[i, order[0]])
+            second_score = (
+                float(adj[i, order[1]]) if m > 1 else best_score
+            )
+
+            z = float(base[i, j])
+            rw = float(raw[i, j])
+            ev = float(evidence[i, j])
+            gap = best_score - float(adj[i, j])
+
+            conf, status = classify(
+                z, rw, gap, fallback, bool(abstract[i]), m
+            )
+
+            timing = None
+
+            if req.refine and an.img_emb is not None and not abstract[i]:
+                job.progress.set(
+                    "verifying",
+                    90 + int(9 * i / max(1, n)),
+                    f"Đang dò kỹ thời điểm câu {i + 1}/{n}...",
+                    an.vision_mode,
+                )
+
+                timing = refine_scene(
+                    reader,
+                    an,
+                    j,
+                    S["sent_vecs"][i],
+                    S["cvecs"][i],
+                )
+
+            if timing is None:
+                timing = coarse_focus(an, j, fidx[i, j])
+
+            if abstract[i]:
+                ranked = [
+                    c for c in (j + 1, j - 1, j + 2, j - 2)
+                    if 0 <= c < m
+                ][:req.top_k]
+            else:
+                ranked = [
+                    c for c in top_candidates(
+                        adj[i],
+                        an.scene_sim,
+                        req.top_k + 1,
+                    )
+                    if c != j
+                ][:req.top_k]
+
+            candidates = [
+                cand_dict(
+                    an,
+                    c,
+                    base[i, c],
+                    raw[i, c],
+                    evidence[i, c],
+                    coarse_focus(an, c, fidx[i, c]),
+                )
+                for c in ranked
+            ]
+
+            results.append({
+                "index": i + 1,
+                "text": sentences[i],
+                "scene_id": sc["scene_id"],
+                "start_sec": sc["start_time"],
+                "end_sec": sc["end_time"],
+                "boundary_start": sc["start_time"],
+                "boundary_end": sc["end_time"],
+                "caption": sc["caption"],
+                "vision_status": sc["vision_status"],
+                "score": round(z, 3),
+                "raw_sim": round(rw, 4),
+                "evidence": round(ev, 3),
+                "margin": round(best_score - second_score, 3),
+                "gap_to_best": round(gap, 3),
+                "confidence": conf,
+                "status": status,
+                "candidates": candidates,
+                **timing,
+                **({
+                    "reason": "Câu trừu tượng; chọn cảnh theo mạch phim."
+                } if abstract[i] else {}),
+            })
+
+    job.lap("verify")
+
+    return results, {
+        "fallback": fallback,
+        "ranking": (
+            "clip_chain_viterbi"
+            if not fallback
+            else "caption_viterbi_fallback"
+        ),
+    }

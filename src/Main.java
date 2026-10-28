@@ -444,7 +444,7 @@ public class Main extends JFrame {
                 "9:16 Dọc - Nền mờ (Blur Background)", "9:16 Dọc - Fit (viền đen)"});
         cbMirrorMode = new JComboBox<>(new String[]{"Không lật hình", "Lật toàn bộ nhất quán", "Lật xen kẽ từng cảnh"});
         cbGpuNvenc = new JCheckBox("Render bằng GPU NVIDIA (h264_nvenc, tự quay về CPU nếu không hỗ trợ)", true);
-        root.add(group("Khung hình & Render", new String[]{"Tỷ lệ khung hình:", "Lật hình:", ""},
+        root.gadd(group("Khung hình & Render", new String[]{"Tỷ lệ khung hình:", "Lật hình:", ""},
                 new JComponent[]{cbAspectMode, cbMirrorMode, cbGpuNvenc}));
 
         cbTtsEngine = new JComboBox<>(new String[]{"Microsoft Edge Neural (qua AI Server) - khuyên dùng", "Google Translate (dự phòng)"});
